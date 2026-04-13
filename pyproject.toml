@@ -1,0 +1,20 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+version = "0.1.0"
+
+name = "http3x"
+description = "A modern async server framework for HTTP/3 and WebTransport over QUIC."
+dependencies = ["aioquic", "wsproto", "starlette", "uvicorn", "httpx"]
+
+authors = [{name = "许灿标", email = "canbiaoxu@outlook.com"}]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = ["License :: OSI Approved :: Apache Software License"]
+
+[project.urls]
+Repository = "https://github.com/canbiaoxu/http3x"
+Documentation = "https://github.com/canbiaoxu/http3x"
