@@ -109,8 +109,8 @@ class QuicConnection(QuicConnectionProtocol):
                             headers = dict(event.headers)
                             if not (headers[b':method'] == b"CONNECT" and headers[b':protocol'] == b"webtransport"): return
                             remote_addr = self._conn._quic._network_paths[0].addr[:2]
-                            request_path = headers[b':path'].decode('utf-8')
-                            path = request_path.split('?', 1)[0]
+                            raw_path = headers[b':path'].decode('utf-8')
+                            path = raw_path.split('?', 1)[0]
                             for pattern, Handler in self._app.wt.route_patterns.values():
                                 if m := pattern.match(path):
                                     self._handlers[session_id] = handler = Handler(
@@ -118,7 +118,7 @@ class QuicConnection(QuicConnectionProtocol):
                                         connection = self,
                                         remote_addr = remote_addr,
                                         headers = event.headers,
-                                        request_path = request_path,
+                                        raw_path = raw_path,
                                         path = path,
                                         path_params = m.groups(),
                                     )

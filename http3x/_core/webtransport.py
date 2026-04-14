@@ -79,7 +79,7 @@ class WebTransportSession:
         connection: QuicConnection,
         remote_addr: tuple[str, int],
         headers: list[tuple[bytes, bytes]],
-        request_path: str,
+        raw_path: str,
         path: str,
         path_params: tuple[str],
     ) -> None:
@@ -91,7 +91,7 @@ class WebTransportSession:
             connection: The QuicConnection this session belongs to
             remote_addr: The remote address (host, port)
             headers: The request headers
-            request_path: The full request path
+            raw_path: The full request path
             path: The path without query parameters
             path_params: The path parameters
         """
@@ -99,7 +99,7 @@ class WebTransportSession:
         self.connection = connection
         self.remote_addr = remote_addr
         self.headers = headers
-        self.request_path = request_path
+        self.raw_path = raw_path
         self.path = path
         self.path_params = path_params
 

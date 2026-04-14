@@ -68,7 +68,7 @@ The `Session` class (alias for `WebTransportSession`) is the main class for hand
 | `connection` | `QuicConnection` | The underlying QUIC connection |
 | `remote_addr` | `tuple[str, int]` | The remote address (host, port) |
 | `headers` | `list[tuple[bytes, bytes]]` | The request headers from the client |
-| `request_path` | `str` | The full request path including query parameters |
+| `raw_path` | `str` | The full request path including query parameters |
 | `path` | `str` | The path without query parameters |
 | `path_params` | `tuple[str]` | Captured path parameters from route pattern |
 | `accepted` | `bool` | Whether the session was accepted |
