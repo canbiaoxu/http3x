@@ -9,6 +9,20 @@ name = "http3x"
 description = "A modern async server framework for HTTP/3 and WebTransport over QUIC."
 dependencies = ["aioquic", "wsproto", "starlette", "uvicorn", "httpx"]
 
+keywords = [
+    "http3",
+    "http/3",
+    "quic",
+    "webtransport",
+    "websocket replacement",
+    "realtime",
+    "streaming",
+    "async server",
+    "python web framework",
+    "datagram",
+    "aioquic",
+]
+
 authors = [{name = "许灿标", email = "canbiaoxu@outlook.com"}]
 requires-python = ">=3.12"
 readme = "README.md"

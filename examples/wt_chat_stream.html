@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>HTTP/3 AI Streaming Demo</title>
+  <title>HTTP/3 AI Streaming Example</title>
   <style>
     * {
       box-sizing: border-box;
@@ -238,9 +238,7 @@
 
     async function init() {
       try {
-        const transport = new WebTransport("https://localhost:4433/chat", {
-          allowInsecure: true
-        });
+        const transport = new WebTransport("https://localhost:4433/chat", { allowInsecure: true });
 
         await transport.ready;
         statusEl.textContent = 'Connected via HTTP/3 WebTransport';

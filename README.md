@@ -29,7 +29,7 @@ app.run(host='::', port=4433, certfile="cert.pem", keyfile="key.pem")
 pip install http3x
 ```
 
-## 🚀 Live Demo
+## 🚀 Live Example
 
 Streaming AI-style responses over HTTP/3 (WebTransport):
 
@@ -47,9 +47,9 @@ hello 👋
 **This is NOT WebSocket.**  
 **This is native HTTP/3 streaming over QUIC.**
 
-![HTTP3X AI Streaming Demo](https://raw.githubusercontent.com/canbiaoxu/http3x/main/demo/wt_demo.png)
+![HTTP3X AI Streaming Example](https://raw.githubusercontent.com/canbiaoxu/http3x/main/examples/wt_chat_stream.png)
 
-See [demo/wt_demo.py](https://github.com/canbiaoxu/http3x/blob/main/demo/wt_demo.py) and [demo/wt_demo.html](https://github.com/canbiaoxu/http3x/blob/main/demo/wt_demo.html) for the complete example.
+See [examples/wt_chat_stream.py](https://github.com/canbiaoxu/http3x/blob/main/examples/wt_chat_stream.py) and [examples/wt_chat_stream.html](https://github.com/canbiaoxu/http3x/blob/main/examples/wt_chat_stream.html) for the complete example.
 
 ## ⚡ Why not WebSocket?
 
@@ -77,7 +77,7 @@ More docs coming soon.
 ## Project Links
 
 - **Source Code**: [GitHub Repository](https://github.com/canbiaoxu/http3x)
-- **Documentation**: [https://github.com/canbiaoxu/http3x](https://github.com/canbiaoxu/http3x)
+- **Documentation**: [Http3x Documentation](https://github.com/canbiaoxu/http3x)
 - **PyPI**: [http3x](https://pypi.org/project/http3x)
 - **Contributors**: [GitHub Contributors](https://github.com/canbiaoxu/http3x/graphs/contributors)
 

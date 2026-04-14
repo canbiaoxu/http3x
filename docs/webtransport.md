@@ -43,9 +43,7 @@ app.run(host='::', port=4433, certfile="cert.pem", keyfile="key.pem")
 ### Client-Side (JavaScript)
 
 ```javascript
-const transport = new WebTransport("https://localhost:4433/wt", { 
-  allowInsecure: true 
-});
+const transport = new WebTransport("https://localhost:4433/wt", { allowInsecure: true });
 await transport.ready;
 
 // Send a datagram
@@ -360,9 +358,7 @@ app.run(host='::', port=4433, certfile="cert.pem", keyfile="key.pem")
 <body>
   <script>
     (async () => {
-      const transport = new WebTransport("https://localhost:4433/chat", {
-        allowInsecure: true
-      });
+      const transport = new WebTransport("https://localhost:4433/chat", { allowInsecure: true });
       
       await transport.ready;
       console.log("Connected!");

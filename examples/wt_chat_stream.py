@@ -24,7 +24,7 @@ app.wt.add("/chat", Chat)
 
 import webbrowser
 try:
-    webbrowser.open_new_tab(f"{__file__}/../wt_demo.html")
+    webbrowser.open_new_tab(f"{__file__}/../wt_chat_stream.html")
 except:
     pass
 
