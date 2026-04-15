@@ -47,9 +47,9 @@ hello 👋
 **This is NOT WebSocket.**  
 **This is native HTTP/3 streaming over QUIC.**
 
-![HTTP3X AI Streaming Example](https://raw.githubusercontent.com/canbiaoxu/http3x/main/examples/wt_chat_stream.png)
+![HTTP3X AI Streaming Example](https://raw.githubusercontent.com/canbiaoxu/http3x/main/tests/wt_chat_stream.png)
 
-See [examples/wt_chat_stream.py](https://github.com/canbiaoxu/http3x/blob/main/examples/wt_chat_stream.py) and [examples/wt_chat_stream.html](https://github.com/canbiaoxu/http3x/blob/main/examples/wt_chat_stream.html) for the complete example.
+See [tests/wt_chat_stream.py](https://github.com/canbiaoxu/http3x/blob/main/tests/wt_chat_stream.py) and [tests/wt_chat_stream.html](https://github.com/canbiaoxu/http3x/blob/main/tests/wt_chat_stream.html) for the complete example.
 
 ## ⚡ Why not WebSocket?
 
