@@ -5,7 +5,7 @@ This module provides WebTransport session and stream classes for HTTP3X.
 """
 
 from ._core.webtransport import (
-    WebTransportSession, WebTransportStream
+    WebTransportSession, WebTransportStream, WebTransportClient
 )
 
 Session = WebTransportSession
@@ -13,3 +13,6 @@ Session = WebTransportSession
 
 Stream = WebTransportStream
 """Alias for WebTransportStream"""
+
+Client = WebTransportClient
+"""Alias for WebTransportClient"""

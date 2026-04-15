@@ -23,7 +23,7 @@ keywords = [
     "aioquic",
 ]
 
-authors = [{name = "许灿标", email = "canbiaoxu@outlook.com"}]
+authors = [{name = "Canbiao Xu", email = "canbiaoxu@outlook.com"}]
 requires-python = ">=3.12"
 readme = "README.md"
 license = {file = "LICENSE"}

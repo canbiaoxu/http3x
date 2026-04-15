@@ -29,7 +29,7 @@ app.run(host='::', port=4433, certfile="cert.pem", keyfile="key.pem")
 pip install http3x
 ```
 
-## 🚀 Live Example
+## 🚀 WebTransport Live Example
 
 Streaming AI-style responses over HTTP/3 (WebTransport):
 
@@ -60,6 +60,37 @@ See [tests/wt_chat_stream.py](https://github.com/canbiaoxu/http3x/blob/main/test
 | Datagram | No support | Built-in datagram |
 | Head-of-line blocking | Yes | No |
 
+## 🚀 HTTP/3 Live Example
+
+Simple HTTP/3 server with GET and POST endpoints:
+
+```python
+from http3x import App
+from http3x.h3 import Handler
+
+app = App()
+
+class ApiHandler(Handler):
+    async def get(self):
+        return {'status': 'ok'}
+    
+    async def post(self):
+        return {'status': 'ok'}
+
+app.h3.add('/h3', ApiHandler)
+
+app.run(host='0.0.0.0', port=443, certfile="cert.pem", keyfile="key.pem")
+```
+
+Using curl with HTTP/3 support:
+
+```bash
+curl --http3-only -k https://localhost:443/h3
+curl --http3-only -k -X POST -d "Hello, HTTP/3!" https://localhost:443/h3
+```
+
+See [tests/h3_mini.py](https://github.com/canbiaoxu/http3x/blob/main/tests/h3_mini.py) for the complete example.
+
 ## Features
 
 - HTTP/3 server (QUIC-based)
@@ -71,6 +102,7 @@ See [tests/wt_chat_stream.py](https://github.com/canbiaoxu/http3x/blob/main/test
 ## Documentation
 
 - [WebTransport Guide](https://github.com/canbiaoxu/http3x/blob/main/docs/webtransport.md) - Complete documentation for WebTransport functionality
+- [HTTP/3 Guide](https://github.com/canbiaoxu/http3x/blob/main/docs/http3.md) - Complete documentation for HTTP/3 functionality
 
 More docs coming soon.
 

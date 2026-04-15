@@ -235,6 +235,7 @@
 
     let writer, reader;
     let isStreaming = false;
+    let currentAiMessage = null;
 
     async function init() {
       try {
@@ -264,7 +265,6 @@
 
     async function readLoop() {
       const decoder = new TextDecoder();
-      let currentAiMessage = null;
 
       while (true) {
         try {
@@ -327,6 +327,8 @@
 
       createMessage('user', text);
       inputEl.value = '';
+
+      currentAiMessage = null;
 
       const encoder = new TextEncoder();
       await writer.write(encoder.encode(text));

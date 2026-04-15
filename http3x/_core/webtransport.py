@@ -11,7 +11,14 @@ import asyncio, logging
 
 from aioquic.h3.events import WebTransportStreamDataReceived
 
-from .base import Signals, QuicConnection, DropQueue
+from .base import Signals, QuicConnection, EndedQueue
+
+
+class WebTransportStreamClosedError(Exception):
+    """
+    Exception raised when attempting to operate on a closed WebTransport stream.
+    """
+    ...
 
 
 class WebTransportStream:
@@ -20,7 +27,7 @@ class WebTransportStream:
     
     This class provides methods to send and receive data over a WebTransport stream.
     """
-    def __init__(self, session: WebTransportSession, stream_id: int):
+    def __init__(self, session: WebTransportSession, stream_id: int, can_send: bool, can_recv: bool):
         """
         Initialize a WebTransportStream.
         
@@ -30,7 +37,21 @@ class WebTransportStream:
         """
         self.session = session
         self.stream_id = stream_id
-        self._stream_msgs: asyncio.Queue[bytes]|DropQueue = asyncio.Queue()
+        self.can_send = can_send
+        self.can_recv = can_recv
+        self._stream_msgs: EndedQueue = EndedQueue()
+    
+    @property
+    def closed(self):
+        """
+        Check if the stream is closed.
+        
+        A stream is closed when it can neither send nor receive data.
+        
+        Returns:
+            bool: True if the stream is closed, False otherwise.
+        """
+        return not (self.can_send or self.can_recv)
     
     async def send(self, data: bytes, end_stream: bool=False, *, flush=True):
         """
@@ -41,10 +62,31 @@ class WebTransportStream:
             end_stream: Whether to end the stream after sending
             flush: Whether to flush the connection after sending
         """
+        if not self.can_send:
+            raise WebTransportStreamClosedError()
         self.session._conn._quic.send_stream_data(stream_id=self.stream_id, data=data, end_stream=end_stream)
         if flush:
             await self.session.flush()
-    
+        if end_stream:
+            self.can_send = False
+            if not self.can_recv:
+                self.session._streams.pop(self.stream_id, None)
+
+    def close(self, error_code: int):
+        """
+        Close the stream with an error code.
+        
+        This resets the stream and marks it as closed for both sending and receiving.
+        
+        Args:
+            error_code: The error code to send when resetting the stream.
+        """
+        self.session._conn._quic.reset_stream(self.stream_id, error_code)
+        self._stream_msgs.close()
+        self.can_recv = False
+        self.can_send = False
+        self.session._streams.pop(self.stream_id, None)
+
     async def __aiter__(self):
         """
         Asynchronous iterator for receiving data from the stream.
@@ -59,14 +101,20 @@ class WebTransportStream:
                     yield data
                 elif data is Signals.Ended:
                     break
-        except Exception as e:
-            logging.exception(f"Error in WebTransportStream.__aiter__: {e}")
-            self._stream_msgs = DropQueue(maxsize=1)
-        else:
-            self.session._streams.pop(self.stream_id, None)
+        finally:
+            self._stream_msgs.close()
+            self.can_recv = False
+            if not self.can_send:
+                self.session._streams.pop(self.stream_id, None)
 
 
-class Client:
+class WebTransportClient:
+    """
+    Represents a WebTransport client connection.
+    
+    This class provides information about the client that connected to the server.
+    """
+    
     def __init__(
         self,
         address: tuple[str, int],
@@ -76,7 +124,7 @@ class Client:
         path_params: tuple[str],
     ) -> None:
         """
-        Initialize a Client.
+        Initialize a WebTransportClient.
         
         Args:
             address: The remote address (host, port)
@@ -102,6 +150,7 @@ class WebTransportSession:
         *,
         session_id: int,
         connection: QuicConnection,
+
         client_address: tuple[str, int],
         client_headers: list[tuple[bytes, bytes]],
         client_raw_path: str,
@@ -123,20 +172,31 @@ class WebTransportSession:
         self.session_id = session_id
         self.connection = connection
 
-        self.accepted = False
-        self.closed = False
-        self._closed_event = asyncio.Event()
-        self._event_msgs: asyncio.Queue|DropQueue = asyncio.Queue()
-        self._datagram_msgs: asyncio.Queue|DropQueue = asyncio.Queue()
-        self._conn = connection._conn
-        self._streams: dict[int, WebTransportStream] = {}
-        self.client = Client(
+        self.client = WebTransportClient(
             address=client_address,
             headers=client_headers,
             raw_path=client_raw_path,
             path=client_path,
             path_params=client_path_params
         )
+
+        self.accepted = False
+        self._closed_event = asyncio.Event()
+        self._event_msgs = EndedQueue()
+        self._datagram_msgs = EndedQueue()
+        self._conn = connection._conn
+        self._streams: dict[int, WebTransportStream] = {}
+        self._async_tasks = []
+    
+    @property
+    def closed(self):
+        """
+        Check if the session is closed.
+        
+        Returns:
+            bool: True if the session is closed, False otherwise.
+        """
+        return self._closed_event.is_set()
     
     async def flush(self):
         """
@@ -202,12 +262,6 @@ class WebTransportSession:
         """
         ...
 
-    async def request_close(self):
-        """
-        Request to close the session.
-        """
-        self._event_msgs.put_nowait(Signals.Ended)
-    
     async def wait_closed(self):
         """
         Wait for the session to close.
@@ -226,17 +280,38 @@ class WebTransportSession:
         if flush:
             await self.flush()
     
-    async def create_stream(self) -> WebTransportStream:
+    async def create_stream(self, can_recv: bool=True) -> WebTransportStream:
         """
-        Create a new bidirectional stream.
+        Create a new WebTransport stream.
+        
+        Args:
+            can_recv: Whether the stream can receive data. If True, creates
+                a bidirectional stream; if False, creates a unidirectional stream.
         
         Returns:
-            WebTransportStream: The new stream
+            WebTransportStream: The newly created stream.
         """
-        stream_id = self._conn.create_webtransport_stream(session_id=self.session_id, bidirectional=True)
-        stream = self._streams[stream_id] = WebTransportStream(self, stream_id)
-        asyncio.create_task(self.on_stream(stream))
+        stream_id = self._conn.create_webtransport_stream(session_id=self.session_id, is_unidirectional=not can_recv)
+        stream = WebTransportStream(self, stream_id, can_send=True, can_recv=can_recv)
+        self._streams[stream_id] = stream
+        if can_recv:
+            asyncio.create_task(self.on_stream(stream))
         return stream
+    
+    def close(self):
+        """
+        Close the session.
+        
+        This closes all streams and signals that the session has ended.
+        """
+        self._event_msgs.close()
+        self._datagram_msgs.close()
+        self._closed_event.set()
+        try:
+            self._conn._quic.reset_stream(self.session_id, 0)
+            self.connection.transmit()
+        except Exception:
+            pass
     
     async def _run(self):
         """
@@ -246,51 +321,66 @@ class WebTransportSession:
         """
         try:
             self.accepted = bool(await self.authorize())
-            if self.accepted:
-                try:
-                    self._conn.send_headers(stream_id=self.session_id, headers=[(b":status", b"200")])
-                    await self.flush()
-                    await self.on_connect()
-                    asyncio.create_task(self._on_datagram_task())
-                    while True:
-                        event = await self._event_msgs.get()
-                        if isinstance(event, WebTransportStreamDataReceived):
-                            stream_id = event.stream_id
-                            stream = self._streams.get(stream_id)
-                            if not stream:
-                                stream = self._streams[stream_id] = WebTransportStream(self, stream_id)
-                                asyncio.create_task(self.on_stream(stream))
-                            stream._stream_msgs.put_nowait(event.data)
-                            if event.stream_ended:
-                                stream._stream_msgs.put_nowait(Signals.Ended)
-                        elif event is Signals.Ended:
-                            break
-                finally:
-                    self._event_msgs = DropQueue(maxsize=1)
-                    self._datagram_msgs.put_nowait(Signals.Ended)
-                    for stream_id, stream in list(self._streams.items()):
-                        stream._stream_msgs.put_nowait(Signals.Ended)
-                        self._streams.pop(stream_id, None)
-                    try:
-                        await self.flush()
-                    except Exception as e:
-                        logging.exception(f"Error flushing connection: {e}")
-                    self.closed = True
-                    self._closed_event.set()
-                    await self.wait_closed()
-                    await self.on_close()
-            else:
-                try:
-                    self._conn.send_headers(stream_id=self.session_id, headers=[(b":status", b"403")])
-                    self._conn.send_data(stream_id=self.session_id, data=b"", end_stream=True)
-                    await self.flush()
-                finally:
-                    self.closed = True
-                    self._closed_event.set()
-        finally:
-            self.closed = True
+        except:
+            self._event_msgs.close()
+            self._datagram_msgs.close()
             self._closed_event.set()
-            self.connection._handlers.pop(self.session_id, None)
+            try:
+                self._conn._quic.reset_stream(self.session_id, 0)
+                self.connection.transmit()
+            except Exception:
+                pass
+        if self.accepted:
+            try:
+                self._conn.send_headers(stream_id=self.session_id, headers=[(b":status", b"200")])
+                await self.flush()
+                await self.on_connect()
+                asyncio.create_task(self._on_datagram_task())
+                while True:
+                    event = await self._event_msgs.get()
+                    if isinstance(event, WebTransportStreamDataReceived):
+                        stream_id = event.stream_id
+                        stream = self._streams.get(stream_id)
+                        if not stream:
+                            can_send = ((stream_id & 0x2) == 0) or ((stream_id & 0x1) != 0)
+                            stream = WebTransportStream(self, stream_id, can_send=can_send, can_recv=True)
+                            self._streams[stream_id] = stream
+                            asyncio.create_task(self.on_stream(stream))
+                        stream._stream_msgs.put_nowait(event.data)
+                        if event.stream_ended:
+                            stream.can_recv = False
+                            stream._stream_msgs.close()
+                            if stream.closed:
+                                self._streams.pop(stream_id, None)
+                    elif event is Signals.Ended:
+                        break
+            finally:
+                self._event_msgs.close()
+                self._datagram_msgs.close()
+                for stream_id, stream in list(self._streams.items()):
+                    stream._stream_msgs.close()
+                    stream.can_recv = False
+                    stream.can_send = False
+                    self._streams.pop(stream_id, None)
+                try:
+                    await self.flush()
+                except Exception as e:
+                    pass
+                self._closed_event.set()
+                self.connection._handlers.pop(self.session_id, None)
+                await self.on_close()
+        else:
+            try:
+                self._conn.send_headers(stream_id=self.session_id, headers=[(b":status", b"403")])
+                self._conn.send_data(stream_id=self.session_id, data=b"", end_stream=True)
+                self._conn._quic.reset_stream(self.session_id, 0)
+            finally:
+                try:
+                    await self.flush()
+                except:
+                    pass
+                self._closed_event.set()
+                self.connection._handlers.pop(self.session_id, None)
 
     async def _on_datagram_task(self):
         """
@@ -307,4 +397,4 @@ class WebTransportSession:
                     break
         except Exception as e:
             logging.exception(f"Error in _on_datagram_task: {e}")
-            self._datagram_msgs = DropQueue(maxsize=1)
+            self._datagram_msgs.close()

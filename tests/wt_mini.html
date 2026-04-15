@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebTransport Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .status.connected {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .status.closed {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .log {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      height: 300px;
+      overflow-y: scroll;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      opacity: 0.8;
+    }
+    button.send {
+      background-color: #007bff;
+      color: white;
+    }
+    button.close {
+      background-color: #dc3545;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>WebTransport Example</h1>
+    <div id="status" class="status">Connecting...</div>
+    <div id="log" class="log"></div>
+    <div style="margin: 10px 0;">
+      <input type="text" id="messageInput" placeholder="Enter message" style="padding: 10px; width: 300px; margin-right: 10px;">
+      <button id="sendDatagram" class="send">Send Datagram</button>
+      <button id="createStream" class="send">Create Stream</button>
+      <button id="close" class="close">Close Connection</button>
+    </div>
+  </div>
+
+  <script>
+    // Log function
+    function log(message) {
+      const logElement = document.getElementById('log');
+      logElement.innerHTML += message + '<br>';
+      logElement.scrollTop = logElement.scrollHeight;
+      console.log(message);
+    }
+
+    // Update status
+    function updateStatus(status) {
+      const statusElement = document.getElementById('status');
+      statusElement.textContent = status;
+      statusElement.className = 'status';
+      if (status === 'Connected') {
+        statusElement.classList.add('connected');
+      } else if (status === 'Closed') {
+        statusElement.classList.add('closed');
+      }
+    }
+
+    (async () => {
+      try {
+        // 延迟1秒后再连接，确保服务已启动
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Create WebTransport connection
+        const t = new WebTransport("https://localhost:4433/wt?s=10", { 
+          allowInsecure: true 
+        });
+
+        log("Connecting...");
+        await t.ready;
+        log("Connected");
+        updateStatus('Connected');
+
+        // Handle connection closed
+        t.closed.then(() => {
+          log("Connection closed");
+          updateStatus('Closed');
+        });
+
+        // Encoding/decoding
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        // Datagram handling
+        const dgWriter = t.datagrams.writable.getWriter();
+        const dgReader = t.datagrams.readable.getReader();
+
+        // Receive datagrams (start listening immediately)
+        (async () => {
+          log("Started listening for datagrams");
+          while (true) {
+            const { value, done } = await dgReader.read();
+            if (done) {
+              log("Datagram reader closed");
+              break;
+            }
+            if (value) {
+              log(`Datagram received: ${decoder.decode(value)}`);
+            }
+          }
+        })();
+
+        // Stream counter
+        let streamCount = 0;
+
+        // Send datagram button
+        document.getElementById('sendDatagram').addEventListener('click', async () => {
+          const input = document.getElementById('messageInput');
+          const message = input.value.trim() || `Datagram ${Date.now()}`;
+          await dgWriter.write(encoder.encode(message));
+          log(`Datagram sent: ${message}`);
+        });
+
+        // Create stream button
+        document.getElementById('createStream').addEventListener('click', async () => {
+          const s = await t.createBidirectionalStream();
+          const streamId = streamCount++;
+          log(`Stream ${streamId} created`);
+
+          const w = s.writable.getWriter();
+          const r = s.readable.getReader();
+
+          // Receive stream data
+          (async () => {
+            while (true) {
+              const { value, done } = await r.read();
+              if (done) {
+                log(`Stream ${streamId} closed`);
+                break;
+              }
+              if (value) {
+                log(`Stream ${streamId} received: ${decoder.decode(value)}`);
+              }
+            }
+          })();
+
+          // Send stream data
+          const input = document.getElementById('messageInput');
+          const message = input.value.trim() || `Stream message ${streamId}`;
+          await w.write(encoder.encode(message));
+          log(`Stream ${streamId} sent: ${message}`);
+        });
+
+        // Close connection button
+        document.getElementById('close').addEventListener('click', () => {
+          log("Closing connection...");
+          t.close();
+        });
+
+      } catch (error) {
+        log(`Error: ${error.message}`);
+        updateStatus('Error');
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -173,16 +173,6 @@ await stream.send(b'Server-initiated message')
 
 ---
 
-#### `request_close()`
-
-Request to close the session gracefully.
-
-```python
-await self.request_close()
-```
-
----
-
 #### `wait_closed()`
 
 Wait until the session is closed.
@@ -475,7 +465,6 @@ Base class for WebTransport session handlers.
 | `on_datagram(data)` | Called for each datagram |
 | `send_datagram(data)` | Send a datagram |
 | `create_stream()` | Create a new stream |
-| `request_close()` | Request session close |
 | `wait_closed()` | Wait for session to close |
 | `flush()` | Flush pending data |
 
