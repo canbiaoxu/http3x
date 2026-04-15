@@ -104,10 +104,10 @@ class QuicConnection(QuicConnectionProtocol):
                     event: H3Event
                     try:
                         if isinstance(event, HeadersReceived):
-                            if (session_id := event.stream_id) in self._handlers: return
-                            if not isinstance(self._conn, H3Connection): return
+                            if (session_id := event.stream_id) in self._handlers: continue
+                            if not isinstance(self._conn, H3Connection): continue
                             headers = dict(event.headers)
-                            if not (headers[b':method'] == b"CONNECT" and headers[b':protocol'] == b"webtransport"): return
+                            if not (headers[b':method'] == b"CONNECT" and headers[b':protocol'] == b"webtransport"): continue
                             address = self._conn._quic._network_paths[0].addr[:2]
                             raw_path = headers[b':path'].decode('utf-8')
                             path = raw_path.split('?', 1)[0]
