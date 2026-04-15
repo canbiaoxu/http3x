@@ -108,7 +108,7 @@ class QuicConnection(QuicConnectionProtocol):
                             if not isinstance(self._conn, H3Connection): return
                             headers = dict(event.headers)
                             if not (headers[b':method'] == b"CONNECT" and headers[b':protocol'] == b"webtransport"): return
-                            remote_addr = self._conn._quic._network_paths[0].addr[:2]
+                            address = self._conn._quic._network_paths[0].addr[:2]
                             raw_path = headers[b':path'].decode('utf-8')
                             path = raw_path.split('?', 1)[0]
                             for pattern, Handler in self._app.wt.route_patterns.values():
@@ -116,11 +116,11 @@ class QuicConnection(QuicConnectionProtocol):
                                     self._handlers[session_id] = handler = Handler(
                                         session_id = session_id,
                                         connection = self,
-                                        remote_addr = remote_addr,
-                                        headers = event.headers,
-                                        raw_path = raw_path,
-                                        path = path,
-                                        path_params = m.groups(),
+                                        client_address = address,
+                                        client_headers = event.headers,
+                                        client_raw_path = raw_path,
+                                        client_path = path,
+                                        client_path_params = m.groups(),
                                     )
                                     asyncio.create_task(handler._run())
                                     break
@@ -257,5 +257,7 @@ class App:
         """
         self.server.close()
         print(f"Http3x server have closed")
+
+# Put it at the bottom to avoid circular imports:
 
 from .webtransport import WebTransportSession

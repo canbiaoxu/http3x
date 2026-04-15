@@ -66,11 +66,12 @@ The `Session` class (alias for `WebTransportSession`) is the main class for hand
 |----------|------|-------------|
 | `session_id` | `int` | The unique identifier for this session |
 | `connection` | `QuicConnection` | The underlying QUIC connection |
-| `remote_addr` | `tuple[str, int]` | The remote address (host, port) |
-| `headers` | `list[tuple[bytes, bytes]]` | The request headers from the client |
-| `raw_path` | `str` | The full request path including query parameters |
-| `path` | `str` | The path without query parameters |
-| `path_params` | `tuple[str]` | Captured path parameters from route pattern |
+| `client` | `Client` | The client object containing client-related information |
+| `client.address` | `tuple[str, int]` | The remote address (host, port) |
+| `client.headers` | `list[tuple[bytes, bytes]]` | The request headers from the client |
+| `client.raw_path` | `str` | The full request path including query parameters |
+| `client.path` | `str` | The path without query parameters |
+| `client.path_params` | `tuple[str]` | Captured path parameters from route pattern |
 | `accepted` | `bool` | Whether the session was accepted |
 | `closed` | `bool` | Whether the session is closed |
 
@@ -83,7 +84,7 @@ Called to determine if the session should be accepted. Override this method to i
 ```python
 class MySession(Session):
     async def authorize(self) -> bool:
-        headers_dict = dict(self.headers)
+        headers_dict = dict(self.client.headers)
         auth_header = headers_dict.get(b'authorization', b'')
         return auth_header == b'Bearer my-secret-token'
 ```
@@ -99,7 +100,7 @@ Called when the session is successfully connected. Use this to perform initializ
 ```python
 class MySession(Session):
     async def on_connect(self):
-        print(f"Client connected from {self.remote_addr}")
+        print(f"Client connected from {self.client.address}")
         await self.send_datagram(b'Welcome!')
 ```
 
@@ -256,13 +257,13 @@ Use regex capture groups to extract path parameters:
 ```python
 class RoomSession(Session):
     async def on_connect(self):
-        room_id = self.path_params[0]
+        room_id = self.client.path_params[0]
         print(f"Joined room: {room_id}")
 
 app.wt.add(r'/room/(\w+)', RoomSession)
 ```
 
-The captured groups are available in `self.path_params` as a tuple.
+The captured groups are available in `self.client.path_params` as a tuple.
 
 ## Running the Server
 
@@ -325,7 +326,7 @@ app = App()
 
 class Chat(Session):
     async def authorize(self) -> bool:
-        headers_dict = dict(self.headers)
+        headers_dict = dict(self.client.headers)
         token = headers_dict.get(b'authorization', b'')
         return token == b'Bearer secret-token'
     

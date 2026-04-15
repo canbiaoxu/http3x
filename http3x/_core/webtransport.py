@@ -66,6 +66,31 @@ class WebTransportStream:
             self.session._streams.pop(self.stream_id, None)
 
 
+class Client:
+    def __init__(
+        self,
+        address: tuple[str, int],
+        headers: list[tuple[bytes, bytes]],
+        raw_path: str,
+        path: str,
+        path_params: tuple[str],
+    ) -> None:
+        """
+        Initialize a Client.
+        
+        Args:
+            address: The remote address (host, port)
+            headers: The request headers
+            raw_path: The full request path
+            path: The path without query parameters
+            path_params: The path parameters
+        """
+        self.address = address
+        self.headers = headers
+        self.raw_path = raw_path
+        self.path = path
+        self.path_params = path_params
+
 class WebTransportSession:
     """
     Represents a WebTransport session.
@@ -77,11 +102,11 @@ class WebTransportSession:
         *,
         session_id: int,
         connection: QuicConnection,
-        remote_addr: tuple[str, int],
-        headers: list[tuple[bytes, bytes]],
-        raw_path: str,
-        path: str,
-        path_params: tuple[str],
+        client_address: tuple[str, int],
+        client_headers: list[tuple[bytes, bytes]],
+        client_raw_path: str,
+        client_path: str,
+        client_path_params: tuple[str],
     ) -> None:
         """
         Initialize a WebTransportSession.
@@ -89,19 +114,14 @@ class WebTransportSession:
         Args:
             session_id: The session ID
             connection: The QuicConnection this session belongs to
-            remote_addr: The remote address (host, port)
-            headers: The request headers
-            raw_path: The full request path
-            path: The path without query parameters
-            path_params: The path parameters
+            client_address: The remote address (host, port)
+            client_headers: The request headers
+            client_raw_path: The full request path
+            client_path: The path without query parameters
+            client_path_params: The path parameters
         """
         self.session_id = session_id
         self.connection = connection
-        self.remote_addr = remote_addr
-        self.headers = headers
-        self.raw_path = raw_path
-        self.path = path
-        self.path_params = path_params
 
         self.accepted = False
         self.closed = False
@@ -110,6 +130,13 @@ class WebTransportSession:
         self._datagram_msgs: asyncio.Queue|DropQueue = asyncio.Queue()
         self._conn = connection._conn
         self._streams: dict[int, WebTransportStream] = {}
+        self.client = Client(
+            address=client_address,
+            headers=client_headers,
+            raw_path=client_raw_path,
+            path=client_path,
+            path_params=client_path_params
+        )
     
     async def flush(self):
         """
@@ -128,7 +155,7 @@ class WebTransportSession:
             
         Example:
             ```python
-            if dict(self.headers).get(b'authorization') == b'Bearer my-token':
+            if dict(self.client.headers).get(b'authorization') == b'Bearer my-token':
                 return True
             else:
                 return False
