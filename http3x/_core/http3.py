@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio, logging, json
 
 from aioquic.h3.events import (
-    DataReceived, HeadersReceived, DataReceived
+    DataReceived, HeadersReceived
 )
 
 from .base import (

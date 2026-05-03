@@ -70,7 +70,7 @@ class EndedQueue(asyncio.Queue):
         Raises:
             Exception: Always raised to prevent async put operations.
         """
-        raise
+        raise RuntimeError("EndedQueue.put() is disabled, use put_nowait() instead")
 
     def put_nowait(self, item):
         """
@@ -243,8 +243,8 @@ class QuicConnection(QuicConnectionProtocol):
                         self._handlers[event.stream_id]._datagram_msgs.put_nowait(event.data)
                     elif isinstance(event, WebTransportStreamDataReceived):  # wt
                         self._handlers[event.session_id]._event_msgs.put_nowait(event)
-                except:
-                    pass
+                except Exception as e:
+                    logging.exception(f"Error handling event: {e}")
         except Exception as e:
             logging.exception(f"Error in quic_event_received: {e}")
 
